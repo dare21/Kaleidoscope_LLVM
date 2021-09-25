@@ -1,0 +1,137 @@
+%{
+
+  #include <iostream>
+  #include <string>
+  #include <cstdlib>
+  #include "ast.hpp"
+
+  using namespace std;
+
+  int yylex();
+
+  void yyerror(string s) {
+    cerr << s << endl;
+    exit(EXIT_FAILURE);
+  }
+
+%}
+
+%union {
+  ExprAST *e;
+  double d;
+  string *s;
+  vector<ExprAST*> *v;
+  vector<string> *v1;
+  PrototypeAST *p;
+}
+
+%type <e> E FunctionCall
+%type <v> ArrayE
+%type <v1> ParameterArray
+%type <p> Signature
+
+%token def_token extern_token
+%token <s> id_token
+%token <d> num_token
+
+%left '+' '-'
+%left '*' '/'
+
+%%
+Program: Program Statement ';' {
+
+ }
+| Statement ';' {
+
+ }
+;
+
+Statement: def_token Signature E {
+  FunctionAST *f = new FunctionAST($2, $3);
+  f->codegen();
+  `delete f;
+ }
+| E {
+  //TODO
+  }
+| extern_token Signature {
+  $2->codegen();
+  delete $2;
+ }
+;
+
+Signature: id_token '(' ParameterArray ')' {
+  $$ = new PrototypeAST(*$1, *$3);
+  delete $1;
+  delete $3;
+ }
+;
+
+ParameterArray: ParameterArray id_token {
+  $$ = $1;
+  $$->push_back(*$2);
+  delete $2;
+ }
+| {
+  $$ = new vector<string>();
+ }
+;
+
+E: E '+' E  {
+  $$ = new AddExprAST($1, $3);
+ }
+| E '-' E   {
+  $$ = new SubExprAST($1, $3);
+ }
+| E '*' E   {
+  $$ = new MulExprAST($1, $3);
+ }
+| E '/' E   {
+  $$ = new DivExprAST($1, $3);
+ }
+| '(' E ')' {
+  $$ = $2;
+ }
+| num_token {
+  $$ = new NumberExprAST($1);
+ }
+| id_token  {
+  $$ = new VariableExprAST(*$1);
+  delete $1;
+ }
+| FunctionCall  {
+  $$ = $1;
+ }
+;
+
+FunctionCall: id_token '(' ArrayE ')' {
+  $$ = new CallExprAST(*$1, *$3);
+  delete $1;
+  delete $3;
+ }
+| id_token '(' ')' {
+  vector<ExprAST*> tmp;
+  $$ = new CallExprAST(*$1, tmp);
+  delete $1;
+ }
+;
+
+ArrayE: ArrayE ',' E {
+  $$ = $1;
+  $$->push_back($3);
+ }
+| E {
+  $$ = new vector<ExprAST*>();
+  $$->push_back($1);
+ }
+;
+
+
+
+%%
+
+int main() {
+  yyparse();
+  return 0;
+}
+

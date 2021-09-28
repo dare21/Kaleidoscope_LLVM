@@ -49,7 +49,7 @@ Program: Program Statement ';' {
 Statement: def_token Signature E {
   FunctionAST *f = new FunctionAST($2, $3);
   f->codegen();
-  `delete f;
+  delete f;
  }
 | E {
   //TODO

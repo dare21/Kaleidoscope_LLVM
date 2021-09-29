@@ -2,7 +2,6 @@
 %option noinput
 %option nounput
 
-
 %{
 
   #include <iostream>
@@ -30,7 +29,7 @@ extern     return extern_token;
 [-+*/;(),]         return *yytext;
 [ \n\t]            {  }
 .   {
-  cerr << "Lexic error: unknown character '" << *yytext << "'" << endl;
+  cerr << "Lexical error: unknown character '" << *yytext << "'" << endl;
   exit(EXIT_FAILURE);
 }
 %%

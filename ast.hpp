@@ -5,9 +5,15 @@
 #include <vector>
 using namespace std;
 
+#include "llvm/IR/Value.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Verifier.h"
+using namespace llvm;
+
 class ExprAST {
 public:
-  virtual void codegen() const = 0;
+  virtual Value* codegen() const = 0;
   virtual ~ExprAST() {
 
   }
@@ -18,7 +24,7 @@ public:
   NumberExprAST(double x)
     :Val(x)
   {}
-  void codegen() const;
+  Value* codegen() const;
 private:
   double Val;
 };
@@ -28,7 +34,7 @@ public:
   VariableExprAST(string s)
     :Name(s)
   {}
-  void codegen() const;
+  Value* codegen() const;
 private:
   string Name;
 };
@@ -51,7 +57,7 @@ public:
   AddExprAST(ExprAST *l, ExprAST *r)
     :BinaryExprAST(l, r)
   {}
-  void codegen() const;
+  Value* codegen() const;
 };
 
 class SubExprAST : public BinaryExprAST {
@@ -59,7 +65,7 @@ public:
   SubExprAST(ExprAST *l, ExprAST *r)
     :BinaryExprAST(l, r)
   {}
-  void codegen() const;
+  Value* codegen() const;
 };
 
 class MulExprAST : public BinaryExprAST {
@@ -67,7 +73,7 @@ public:
   MulExprAST(ExprAST *l, ExprAST *r)
     :BinaryExprAST(l, r)
   {}
-  void codegen() const;
+  Value* codegen() const;
 };
 
 class DivExprAST : public BinaryExprAST {
@@ -75,7 +81,7 @@ public:
   DivExprAST(ExprAST *l, ExprAST *r)
     :BinaryExprAST(l, r)
   {}
-  void codegen() const;
+  Value* codegen() const;
 };
 
 class CallExprAST : public ExprAST {
@@ -83,7 +89,7 @@ public:
   CallExprAST(string s, vector<ExprAST*> v)
     :Callee(s), Args(v)
   {}
-  void codegen() const;
+  Value* codegen() const;
   ~CallExprAST();
 private:
   CallExprAST(const CallExprAST&);
@@ -97,7 +103,10 @@ public:
   PrototypeAST(string s, vector<string> v)
     :Name(s), Args(v)
   {}
-  void codegen() const;
+  Function* codegen() const;
+  string getName() const {
+    return Name;
+  }
 private:
   string Name;
   vector<string> Args;
@@ -108,7 +117,7 @@ public:
   FunctionAST(PrototypeAST *p, ExprAST *e)
     :Proto(p), Body(e)
   {}
-  void codegen() const;
+  Value* codegen() const;
   ~FunctionAST();
 private:
   FunctionAST(const FunctionAST&);

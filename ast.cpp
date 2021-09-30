@@ -58,6 +58,22 @@ Value* DivExprAST::codegen() const {
   return Builder.CreateFDiv(L, R, "divtmp");
 }
 
+Value* LtExprAST::codegen() const {
+  Value* L = LHS->codegen();
+  Value* R = RHS->codegen();
+  if (!L || !R)
+    return nullptr;
+  return Builder.CreateUIToFP(Builder.CreateFCmpOLT(L, R, "lttmp"), Type::getDoubleTy(TheContext), "booltmp");
+}
+
+Value* GtExprAST::codegen() const {
+  Value* L = LHS->codegen();
+  Value* R = RHS->codegen();
+  if (!L || !R)
+    return nullptr;
+  return Builder.CreateUIToFP(Builder.CreateFCmpOGT(L, R, "gttmp"), Type::getDoubleTy(TheContext), "booltmp");
+}
+
 CallExprAST::~CallExprAST() {
   for (vector<ExprAST*>::iterator i = Args.begin(); i != Args.end(); i++)
     delete *i;
@@ -84,6 +100,49 @@ Value* CallExprAST::codegen() const {
   }
 
   return Builder.CreateCall(f, ArgsV, "calltmp");
+}
+
+Value* IfExprAST::codegen() const {
+  Value *CondV = Cond->codegen();
+  if (!CondV)
+    return nullptr;
+
+  Value *Tmp = Builder.CreateFCmpONE(CondV, ConstantFP::get(TheContext, APFloat(0.0)), "ifcond");
+
+  Function *f = Builder.GetInsertBlock()->getParent();
+  
+  BasicBlock *ThenBB = BasicBlock::Create(TheContext, "then", f);
+  BasicBlock *ElseBB = BasicBlock::Create(TheContext, "else");
+  BasicBlock *MergeBB = BasicBlock::Create(TheContext, "ifcont");
+  
+  Builder.CreateCondBr(Tmp, ThenBB, ElseBB);
+ 
+  Builder.SetInsertPoint(ThenBB);
+  Value *ThenV = Then->codegen();
+  if (!ThenV)
+    return nullptr;
+  Builder.CreateBr(MergeBB);
+
+  f->getBasicBlockList().push_back(ElseBB);
+  Builder.SetInsertPoint(ElseBB);
+  Value *ElseV = Else->codegen();
+  if (!ElseV)
+    return nullptr;
+  Builder.CreateBr(MergeBB);
+
+  f->getBasicBlockList().push_back(MergeBB);
+  Builder.SetInsertPoint(MergeBB);
+  PHINode *PHI = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, "iftmp");
+  PHI->addIncoming(ThenV, ThenBB);
+  PHI->addIncoming(ElseV, ElseBB);
+
+  return PHI;
+}
+
+IfExprAST::~IfExprAST() {
+  delete Cond;
+  delete Then;
+  delete Else;
 }
 
 Function* PrototypeAST::codegen() const {

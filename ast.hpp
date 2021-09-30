@@ -84,6 +84,22 @@ public:
   Value* codegen() const;
 };
 
+class LtExprAST : public BinaryExprAST {
+public:
+  LtExprAST(ExprAST *l, ExprAST *r)
+    :BinaryExprAST(l, r)
+  {}
+  Value* codegen() const;
+};
+
+class GtExprAST : public BinaryExprAST {
+public:
+  GtExprAST(ExprAST *l, ExprAST *r)
+    :BinaryExprAST(l, r)
+  {}
+  Value* codegen() const;
+};
+
 class CallExprAST : public ExprAST {
 public:
   CallExprAST(string s, vector<ExprAST*> v)
@@ -124,6 +140,19 @@ private:
   FunctionAST& operator=(const FunctionAST&);
   PrototypeAST *Proto;
   ExprAST *Body;
+};
+
+class IfExprAST : public ExprAST {
+public:
+  IfExprAST(ExprAST *e1, ExprAST *e2, ExprAST *e3)
+    :Cond(e1), Then(e2), Else(e3)
+  {}
+  Value* codegen() const;
+  ~IfExprAST();
+private:
+  IfExprAST(const IfExprAST&);
+  IfExprAST& operator=(const IfExprAST&);
+  ExprAST *Cond, *Then, *Else;
 };
 
 #endif

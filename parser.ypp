@@ -14,6 +14,8 @@
     exit(EXIT_FAILURE);
   }
 
+  int counter = 0;
+
 %}
 
 %union {
@@ -30,10 +32,12 @@
 %type <v1> ParameterArray
 %type <p> Signature
 
-%token def_token extern_token
+%token def_token extern_token if_token then_token else_token 
 %token <s> id_token
 %token <d> num_token
 
+%left else_token
+%left '<' '>'
 %left '+' '-'
 %left '*' '/'
 
@@ -52,8 +56,11 @@ Statement: def_token Signature E {
   delete f;
  }
 | E {
-  //TODO
-  }
+  vector<string> arguments;
+  FunctionAST *f = new FunctionAST(new PrototypeAST(string("anonymous_function_") + to_string(counter++), arguments), $1);
+  f->codegen();
+  delete f; 
+ }
 | extern_token Signature {
   $2->codegen();
   delete $2;
@@ -89,6 +96,12 @@ E: E '+' E  {
 | E '/' E   {
   $$ = new DivExprAST($1, $3);
  }
+| E '<' E {
+  $$ = new LtExprAST($1, $3);
+}
+| E '>' E {
+  $$ = new GtExprAST($1, $3);
+}
 | '(' E ')' {
   $$ = $2;
  }
@@ -101,6 +114,9 @@ E: E '+' E  {
  }
 | FunctionCall  {
   $$ = $1;
+ }
+| if_token E then_token E else_token E {
+  $$ = new IfExprAST($2, $4, $6);
  }
 ;
 
@@ -130,8 +146,19 @@ ArrayE: ArrayE ',' E {
 
 %%
 
+extern LLVMContext TheContext;
+extern Module* TheModule;
+
 int main() {
+
+  InitializeModuleAndPassManager();
+
   yyparse();
+  
+  TheModule->print(outs(), nullptr);
+
+  delete TheModule;
+
   return 0;
 }
 

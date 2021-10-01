@@ -17,17 +17,29 @@
 
 %%
 def        return def_token;
+
 extern     return extern_token;
+
+if         return if_token;
+
+then       return then_token;
+
+else       return else_token;
+
 [a-zA-Z_][a-zA-Z_0-9]* {
   yylval.s = new string(yytext);
   return id_token;
 }
+
 [0-9]+(\.[0-9]*)? {
   yylval.d = atof(yytext);
   return num_token;
 }
-[-+*/;(),]         return *yytext;
+
+[-+*/;(),<>]         return *yytext;
+
 [ \n\t]            {  }
+
 .   {
   cerr << "Lexical error: unknown character '" << *yytext << "'" << endl;
   exit(EXIT_FAILURE);

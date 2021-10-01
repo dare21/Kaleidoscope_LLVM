@@ -5,6 +5,7 @@ LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 Module* TheModule;
 map<string, Value*> NamedValues;
+legacy::FunctionPassManager* TheFPM;
 
 //language uses floating point values, hence the use of ConstantFP
 
@@ -198,4 +199,17 @@ Value* FunctionAST::codegen() const {
   f->eraseFromParent();
   
   return nullptr;
+}
+
+void InitializeModuleAndPassManager() {
+  TheModule = new Module("My module", TheContext);
+  
+  TheFPM = new legacy::FunctionPassManager(TheModule);
+  
+  TheFPM->add(createInstructionCombiningPass());
+  TheFPM->add(createReassociatePass());
+  TheFPM->add(createGVNPass());
+  TheFPM->add(createCFGSimplificationPass());
+
+  TheFPM->doInitialization();
 }

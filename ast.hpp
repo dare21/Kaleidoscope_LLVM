@@ -9,6 +9,9 @@ using namespace std;
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/LinkAllPasses.h"
+
 using namespace llvm;
 
 class ExprAST {
@@ -154,5 +157,7 @@ private:
   IfExprAST& operator=(const IfExprAST&);
   ExprAST *Cond, *Then, *Else;
 };
+
+void InitializeModuleAndPassManager();
 
 #endif

@@ -1,18 +1,21 @@
 #include "ast.hpp"
 #include <iostream>
 
+//language uses floating point values, hence the use of ConstantFP
+
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 Module* TheModule;
 map<string, Value*> NamedValues;
 legacy::FunctionPassManager* TheFPM;
 
-//language uses floating point values, hence the use of ConstantFP
 
+//generating a num constant
 Value* NumberExprAST::codegen() const {
   return ConstantFP::get(TheContext, APFloat(Val));
 }
 
+//generating a variable
 Value* VariableExprAST::codegen() const {
   Value* V = NamedValues[Name];
   if (!V) {
@@ -22,11 +25,13 @@ Value* VariableExprAST::codegen() const {
   return V;
 }
 
+//destructor for binary expressions
 BinaryExprAST::~BinaryExprAST() {
   delete LHS;
   delete RHS;
 }
 
+//generating an "add" expression
 Value* AddExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -35,6 +40,7 @@ Value* AddExprAST::codegen() const {
   return Builder.CreateFAdd(L, R, "addtmp");
 }
 
+//generating a "sub" expression
 Value* SubExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -43,6 +49,7 @@ Value* SubExprAST::codegen() const {
   return Builder.CreateFSub(L, R, "subtmp");
 }
 
+//generating a "mul" expression
 Value* MulExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -51,6 +58,7 @@ Value* MulExprAST::codegen() const {
   return Builder.CreateFMul(L, R, "multmp");
 }
 
+//generating a "div" expression
 Value* DivExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -59,6 +67,7 @@ Value* DivExprAST::codegen() const {
   return Builder.CreateFDiv(L, R, "divtmp");
 }
 
+//generating a "lower then" expression
 Value* LtExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -67,6 +76,7 @@ Value* LtExprAST::codegen() const {
   return Builder.CreateUIToFP(Builder.CreateFCmpOLT(L, R, "lttmp"), Type::getDoubleTy(TheContext), "booltmp");
 }
 
+//generating a "greater then" expression
 Value* GtExprAST::codegen() const {
   Value* L = LHS->codegen();
   Value* R = RHS->codegen();
@@ -75,11 +85,13 @@ Value* GtExprAST::codegen() const {
   return Builder.CreateUIToFP(Builder.CreateFCmpOGT(L, R, "gttmp"), Type::getDoubleTy(TheContext), "booltmp");
 }
 
+//destructor for function call
 CallExprAST::~CallExprAST() {
   for (vector<ExprAST*>::iterator i = Args.begin(); i != Args.end(); i++)
     delete *i;
 }
 
+//generating code for a function call
 Value* CallExprAST::codegen() const {
   Function *f = TheModule->getFunction(Callee);
   if (!f) {
@@ -103,6 +115,7 @@ Value* CallExprAST::codegen() const {
   return Builder.CreateCall(f, ArgsV, "calltmp");
 }
 
+//generating code for an "if" expression
 Value* IfExprAST::codegen() const {
   Value *CondV = Cond->codegen();
   if (!CondV)
@@ -140,12 +153,76 @@ Value* IfExprAST::codegen() const {
   return PHI;
 }
 
+//destrcutor for an "if" expression
 IfExprAST::~IfExprAST() {
   delete Cond;
   delete Then;
   delete Else;
 }
 
+//generating code for a "for" loop
+Value* ForExprAST::codegen() const {
+  Value *StartV = Start->codegen();
+  if (!StartV)
+    return nullptr;
+
+  Function *f = Builder.GetInsertBlock()->getParent();
+  BasicBlock *LoopBB = BasicBlock::Create(TheContext, "loop", f);
+  
+  Builder.CreateBr(LoopBB);
+  BasicBlock *PreheaderBB = Builder.GetInsertBlock();
+
+  Builder.SetInsertPoint(LoopBB);
+
+  PHINode *Variable = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, VarName);
+  Variable->addIncoming(StartV, PreheaderBB);
+
+  Value *OldVal = NamedValues[VarName];
+  NamedValues[VarName] = Variable;
+
+  Value* EndV = End->codegen();
+  if (!EndV)
+    return nullptr;
+  Value *Tmp = Builder.CreateFCmpONE(EndV, ConstantFP::get(TheContext, APFloat(0.0)), "loopcond");
+  BasicBlock *Loop1BB = BasicBlock::Create(TheContext, "loop1", f);
+  BasicBlock *AfterLoopBB = BasicBlock::Create(TheContext, "afterloop");
+  Builder.CreateCondBr(Tmp, Loop1BB, AfterLoopBB);
+  
+  Builder.SetInsertPoint(Loop1BB);
+  Value* BodyV = Body->codegen();
+  if (!BodyV)
+    return nullptr;
+
+  Value* StepV = Step->codegen();
+  if (!StepV)
+    return nullptr;
+  Value *NextVar = Builder.CreateFAdd(Variable, StepV, "nextvar");
+  Builder.CreateBr(LoopBB);
+
+  BasicBlock *LoopEndBB = Builder.GetInsertBlock();
+  
+  Variable->addIncoming(NextVar, LoopEndBB);
+  
+  if (OldVal)
+    NamedValues[VarName] = OldVal;
+  else
+    NamedValues.erase(VarName);
+
+  f->getBasicBlockList().push_back(AfterLoopBB);
+  Builder.SetInsertPoint(AfterLoopBB);
+
+  return ConstantFP::get(TheContext, APFloat(0.0));
+}
+
+//destructor for a "for" loop
+ForExprAST::~ForExprAST() {
+  delete Start;
+  delete End;
+  delete Step;
+  delete Body;
+}
+
+//generating code for a function prototype
 Function* PrototypeAST::codegen() const {
   vector<Type*> tmp;
   for (unsigned i = 0; i < Args.size(); i++)
@@ -162,11 +239,13 @@ Function* PrototypeAST::codegen() const {
   return f;
 }
 
+//destructor for functions
 FunctionAST::~FunctionAST() {
   delete Proto;
   delete Body;
 }
 
+//generating code of a function
 Value* FunctionAST::codegen() const {
   Function *f = TheModule->getFunction(Proto->getName());
 
@@ -201,6 +280,7 @@ Value* FunctionAST::codegen() const {
   return nullptr;
 }
 
+//module and pass manager initialization
 void InitializeModuleAndPassManager() {
   TheModule = new Module("My module", TheContext);
   

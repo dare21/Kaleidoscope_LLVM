@@ -158,6 +158,20 @@ private:
   ExprAST *Cond, *Then, *Else;
 };
 
+class ForExprAST : public ExprAST {
+public:
+  ForExprAST(string s, ExprAST *e1, ExprAST *e2, ExprAST *e3, ExprAST *e4)
+    :VarName(s), Start(e1), End(e2), Step(e3), Body(e4)
+  {}
+  Value* codegen() const;
+  ~ForExprAST();
+private:
+  ForExprAST(const ForExprAST&);
+  ForExprAST& operator=(const ForExprAST&);
+  string VarName;
+  ExprAST *Start, *End, *Step, *Body;
+};
+
 void InitializeModuleAndPassManager();
 
 #endif

@@ -33,10 +33,12 @@
 %type <p> Signature
 
 %token def_token extern_token if_token then_token else_token 
+%token for_token in_token
 %token <s> id_token
 %token <d> num_token
 
-%left else_token
+%left then_token
+%left else_token in_token
 %left '<' '>'
 %left '+' '-'
 %left '*' '/'
@@ -118,6 +120,18 @@ E: E '+' E  {
 | if_token E then_token E else_token E {
   $$ = new IfExprAST($2, $4, $6);
  }
+| if_token E then_token E {
+  $$ = new IfExprAST($2, $4, new NumberExprAST(0.0));
+ }
+| for_token id_token '=' E ',' E ',' E in_token E {
+  $$ = new ForExprAST(*$2, $4, $6, $8, $10);
+  delete $2;
+ }
+| for_token id_token '=' E ',' E in_token E {
+  $$ = new ForExprAST(*$2, $4, $6, new NumberExprAST(1.0), $8);
+  delete $2;
+ }
+
 ;
 
 FunctionCall: id_token '(' ArrayE ')' {

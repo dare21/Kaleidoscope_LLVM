@@ -6,7 +6,7 @@
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 Module* TheModule;
-map<string, Value*> NamedValues;
+map<string, AllocaInst*> NamedValues;
 legacy::FunctionPassManager* TheFPM;
 
 
@@ -17,7 +17,7 @@ Value* NumberExprAST::codegen() const {
 
 //generating a variable
 Value* VariableExprAST::codegen() const {
-  Value* V = NamedValues[Name];
+  AllocaInst* V = NamedValues[Name];
   if (!V) {
     cerr << "Nepoznata promenljiva " << Name << endl;
     return nullptr;
@@ -145,6 +145,7 @@ Value* IfExprAST::codegen() const {
   if (!ThenV)
     return nullptr;
   Builder.CreateBr(MergeBB);
+  ThenBB = Builder.GetInsertBlock();
 
   f->getBasicBlockList().push_back(ElseBB);
   Builder.SetInsertPoint(ElseBB);
@@ -152,6 +153,7 @@ Value* IfExprAST::codegen() const {
   if (!ElseV)
     return nullptr;
   Builder.CreateBr(MergeBB);
+  ElseBB = Builder.GetInsertBlock();
 
   f->getBasicBlockList().push_back(MergeBB);
   Builder.SetInsertPoint(MergeBB);
@@ -177,17 +179,17 @@ Value* ForExprAST::codegen() const {
 
   Function *f = Builder.GetInsertBlock()->getParent();
   BasicBlock *LoopBB = BasicBlock::Create(TheContext, "loop", f);
+
+  AllocaInst *Alloca = CreateEntryBlockAlloca(f, VarName);
+  Builder.CreateStore(StartV, Alloca);
   
   Builder.CreateBr(LoopBB);
-  BasicBlock *PreheaderBB = Builder.GetInsertBlock();
 
   Builder.SetInsertPoint(LoopBB);
+  
 
-  PHINode *Variable = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, VarName);
-  Variable->addIncoming(StartV, PreheaderBB);
-
-  Value *OldVal = NamedValues[VarName];
-  NamedValues[VarName] = Variable;
+  AllocaInst *OldVal = NamedValues[VarName];
+  NamedValues[VarName] = Alloca;
 
   Value* EndV = End->codegen();
   if (!EndV)
@@ -205,13 +207,11 @@ Value* ForExprAST::codegen() const {
   Value* StepV = Step->codegen();
   if (!StepV)
     return nullptr;
-  Value *NextVar = Builder.CreateFAdd(Variable, StepV, "nextvar");
+  Value *CurrVal = Builder.CreateLoad(Alloca, VarName);
+  Value *NextVar = Builder.CreateFAdd(CurrVal, StepV, "nextvar");
+  Builder.CreateStore(NextVar, Alloca);
   Builder.CreateBr(LoopBB);
 
-  BasicBlock *LoopEndBB = Builder.GetInsertBlock();
-  
-  Variable->addIncoming(NextVar, LoopEndBB);
-  
   if (OldVal)
     NamedValues[VarName] = OldVal;
   else
@@ -264,7 +264,7 @@ Value* FunctionAST::codegen() const {
     return nullptr;
 
   if (!f->empty()) {
-    cerr << "Function " << Proto->getName() << " cannot be redefined!" << endl;
+    cerr << "Funkcija " << Proto->getName() << " ne moze da se redefinise" << endl;
     return nullptr;
   }
 
@@ -272,8 +272,11 @@ Value* FunctionAST::codegen() const {
   Builder.SetInsertPoint(BB);
 
   NamedValues.clear();
-  for (auto &a : f->args())
-    NamedValues[string(a.getName())] = &a;
+  for (auto &a : f->args()) {
+    AllocaInst *Alloca = CreateEntryBlockAlloca(f, string(a.getName()));
+    NamedValues[string(a.getName())] = Alloca;
+    Builder.CreateStore(&a, Alloca);
+  }
 
   Value* tmp = Body->codegen();
   if (tmp != nullptr) {
@@ -281,6 +284,8 @@ Value* FunctionAST::codegen() const {
 
     verifyFunction(*f);
 
+    TheFPM->run(*f);
+    
     return f;
   }
 
@@ -299,6 +304,12 @@ void InitializeModuleAndPassManager() {
   TheFPM->add(createReassociatePass());
   TheFPM->add(createGVNPass());
   TheFPM->add(createCFGSimplificationPass());
+  TheFPM->add(createPromoteMemoryToRegisterPass());
 
   TheFPM->doInitialization();
+}
+
+AllocaInst* CreateEntryBlockAlloca(Function *f, string s) {
+  IRBuilder<> TmpBuilder(&(f->getEntryBlock()), f->getEntryBlock().begin());
+  return TmpBuilder.CreateAlloca(Type::getDoubleTy(TheContext), 0, s);
 }

@@ -182,4 +182,6 @@ private:
 
 void InitializeModuleAndPassManager();
 
+AllocaInst* CreateEntryBlockAlloca(Function *f, string s);
+
 #endif

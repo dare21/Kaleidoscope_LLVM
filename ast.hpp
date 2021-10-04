@@ -103,6 +103,14 @@ public:
   Value* codegen() const;
 };
 
+class SeqExprAST : public BinaryExprAST {
+public:
+  SeqExprAST(ExprAST *l, ExprAST *r)
+    :BinaryExprAST(l, r)
+  {}
+  Value* codegen() const;
+};
+
 class CallExprAST : public ExprAST {
 public:
   CallExprAST(string s, vector<ExprAST*> v)

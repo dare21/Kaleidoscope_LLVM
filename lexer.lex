@@ -42,7 +42,7 @@ in         return in_token;
   return num_token;
 }
 
-[-+*/;(),<>]         return *yytext;
+[-+*/;(),<>=!|:]         return *yytext;
 
 [ \n\t]            {  }
 

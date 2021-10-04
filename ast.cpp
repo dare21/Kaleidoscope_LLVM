@@ -85,6 +85,15 @@ Value* GtExprAST::codegen() const {
   return Builder.CreateUIToFP(Builder.CreateFCmpOGT(L, R, "gttmp"), Type::getDoubleTy(TheContext), "booltmp");
 }
 
+//generating code for a "seq" expression
+Value* SeqExprAST::codegen() const {
+  Value* L = LHS->codegen();
+  Value* R = RHS->codegen();
+  if (!L || !R)
+    return nullptr;
+  return R;
+}
+
 //destructor for function call
 CallExprAST::~CallExprAST() {
   for (vector<ExprAST*>::iterator i = Args.begin(); i != Args.end(); i++)

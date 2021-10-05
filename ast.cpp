@@ -294,6 +294,57 @@ Value* FunctionAST::codegen() const {
   return nullptr;
 }
 
+Value* AssignExprAST::codegen() const {
+  Value *r = Expression->codegen();
+  if (!r)
+    return nullptr;
+
+  Builder.CreateStore(r, NamedValues[Name]);
+
+  return r;
+}
+
+AssignExprAST::~AssignExprAST() {
+  delete Expression;
+}
+
+Value* VarExprAST::codegen() const {
+
+  Function *f = Builder.GetInsertBlock()->getParent();
+  
+  vector<AllocaInst*> oldAllocas;
+  for (unsigned i = 0; i < VarNames.size(); i++)
+    oldAllocas.push_back(NamedValues[VarNames[i].first]);
+  
+  for (unsigned i = 0; i < VarNames.size(); i++) {
+    AllocaInst *Alloca = CreateEntryBlockAlloca(f, VarNames[i].first);
+    NamedValues[VarNames[i].first] = Alloca;
+    Value *tmp = VarNames[i].second->codegen();
+    if (!tmp)
+      return nullptr;
+    Builder.CreateStore(tmp, Alloca);
+  }
+
+  Value *b = Body->codegen();
+  if (!b)
+    return nullptr;
+
+  for (unsigned i = 0; i < oldAllocas.size(); i++) {
+    if (oldAllocas[i])
+      NamedValues[VarNames[i].first] = oldAllocas[i];
+    else
+      NamedValues.erase(VarNames[i].first);
+  }
+  
+  return b;
+}
+
+VarExprAST::~VarExprAST() {
+  for (unsigned i = 0; i < VarNames.size(); i++)
+    delete VarNames[i].second;
+  delete Body;
+}
+
 //module and pass manager initialization
 void InitializeModuleAndPassManager() {
   TheModule = new Module("My module", TheContext);

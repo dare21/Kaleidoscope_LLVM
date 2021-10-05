@@ -30,6 +30,10 @@ for        return for_token;
 
 in         return in_token;
 
+var        return var_token;
+
+"=="       return eq_token; 
+
 [#].*      {   }
 
 [a-zA-Z_][a-zA-Z_0-9]* {

@@ -12,6 +12,13 @@ using namespace std;
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/LinkAllPasses.h"
 
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Support/FileSystem.h"
+
 using namespace llvm;
 
 class ExprAST {
@@ -178,6 +185,34 @@ private:
   ForExprAST& operator=(const ForExprAST&);
   string VarName;
   ExprAST *Start, *End, *Step, *Body;
+};
+
+class AssignExprAST : public ExprAST {
+public:
+  AssignExprAST(string n, ExprAST *e)
+    :Name(n), Expression(e)
+  {}
+  Value* codegen() const;
+  ~AssignExprAST();
+private:
+  AssignExprAST(const AssignExprAST&);
+  AssignExprAST& operator=(const AssignExprAST&);
+  string Name;
+  ExprAST *Expression;
+};
+
+class VarExprAST : public ExprAST {
+public:
+  VarExprAST(vector< pair<string, ExprAST*> > v, ExprAST *e)
+    :VarNames(v), Body(e)
+  {}
+  Value* codegen() const;
+  ~VarExprAST();
+private:
+  VarExprAST(const VarExprAST&);
+  VarExprAST& operator=(const VarExprAST&);
+  vector< pair<string, ExprAST*> > VarNames;
+  ExprAST *Body;
 };
 
 void InitializeModuleAndPassManager();

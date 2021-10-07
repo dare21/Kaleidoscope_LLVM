@@ -1,0 +1,22 @@
+def zbir (x y)
+	x + y
+;
+
+def kvadrat (x)
+	x * x
+;
+
+def nula ()
+	0
+;
+
+2 + 5 * nula() - kvadrat(2 + 1) - zbir(1 + 2, 4);
+
+extern sin(x);
+extern cos(x);
+
+def g(x)
+	sin(x) + cos(x)
+;
+
+g(0) + sin(3.14);

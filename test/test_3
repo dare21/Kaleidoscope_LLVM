@@ -1,0 +1,10 @@
+extern putchard(char);
+
+def printstar(n)
+	for i = 0, i < n, 1 in
+		putchard(42);	#ascii 42 = '*'
+
+def printstar10(n)
+	for i = 0, i < n in
+		if i < 10 then
+				putchard(42);

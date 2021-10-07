@@ -1,0 +1,27 @@
+extern printd(s);
+
+def test(x)
+	printd(x) :
+	x = 48 :
+	printd(x)
+;
+
+#recursive Fibonacci
+def fib(x)
+	if (x < 3) then
+		1
+	else
+		fib(x-1) + fib(x-2)
+;
+
+#iterative Fibonacci
+def fibi(x)
+	var a = 1, b = 1, c in (
+		for i = 2, i < x in (
+			c = a + b :
+			a = b :
+			b = c
+		) :
+		b
+	)
+;

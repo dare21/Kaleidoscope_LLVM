@@ -1,0 +1,22 @@
+def f(x)
+	!(x-10)
+;
+
+def g(x y)
+	x | y
+;
+
+def h(x y)
+	x = y
+;
+
+extern printd(x);
+
+def fja(x)
+	for i = 0, i < x in (
+		printd(42) :
+		printd(32) :
+		printd(i) :
+		printd(10)
+	)
+;

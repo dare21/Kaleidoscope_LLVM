@@ -114,10 +114,11 @@ Value* CallExprAST::codegen() const {
   }
 
   vector<Value*> ArgsV;
-  for (unsigned i = 0; i < Args.size(); i++) {
-    Value *tmp = Args[i]->codegen();
+  for (auto e: Args) {
+    Value *tmp = e->codegen();
     if (!tmp)
       return nullptr;
+      
     ArgsV.push_back(tmp);
   }
 

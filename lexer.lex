@@ -17,21 +17,13 @@
 
 %%
 def        return def_token;
-
 extern     return extern_token;
-
 if         return if_token;
-
 then       return then_token;
-
 else       return else_token;
-
 for        return for_token;
-
 in         return in_token;
-
 var        return var_token;
-
 "=="       return eq_token; 
 
 [#].*      {   }
